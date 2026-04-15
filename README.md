@@ -1,7 +1,7 @@
 # Host Discovery Service — SDN Mininet Project
 **Course:** UE24CS252B — Computer Networks
-Name - VARSHINI A
-SRN - PES1UG24CS517
+Name - VARSHINI A , 
+SRN - PES1UG24CS517 , 
 SECTION - I
 ---
 
