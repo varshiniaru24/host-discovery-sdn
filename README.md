@@ -9,7 +9,7 @@
 
 ## Problem Statement
 
-**Problem #17 — Host Discovery Service**
+**Problem #7 — Host Discovery Service**
 
 In traditional networks, network administrators have no real-time visibility
 into which hosts are connected to the network. This project implements an
