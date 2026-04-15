@@ -166,7 +166,7 @@ controller log with their MAC, port and switch details.
 
 ### Flow Table (ovs-ofctl dump-flows s1)
 Empty flow table because POX is just flooding, not installing flow rules
-![FlowTable](WhatsApp%Image%2026-04-15%at%23.52.39.jpeg)
+![FlowTable](WhatsApp Image 2026-04-15 at 23.52.39.jpeg)
 
 ---
 
