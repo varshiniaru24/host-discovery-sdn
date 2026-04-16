@@ -18,7 +18,7 @@ that automatically detects hosts as they join the network, maintains a
 real-time database of host information, and displays live updates.
 
 This demonstrates core SDN concepts: controller-switch interaction,
-packet_in event handling, and match-action flow rule logic.
+packet_in event handling, and match-action flow rule logic with dynamic flow installation.
 
 ---
 
@@ -101,9 +101,10 @@ mininet> sh ovs-ofctl dump-flows s1
 
 ## Expected Output
 
-- POX terminal prints each host discovered with MAC, IP, Switch, Port and Time
-- pingall shows 0% packet loss across all 4 hosts
-- All 4 hosts appear in the host database with incrementing count (1 → 2 → 3 → 4)
+1. POX terminal prints each host discovered with MAC, IP, Switch, Port and Time
+2. pingall shows 0% packet loss across all 4 hosts
+3. All 4 hosts appear in the host database with incrementing count (1 → 2 → 3 → 4)
+4. Flow table shows dynamically installed entries after communication
 
 ---
 
@@ -118,7 +119,7 @@ The controller logs each host with its full details on first contact.
 Running `h3 ping -c 5 h4` after initial discovery shows the controller
 handling subsequent traffic. After h3 pings h4, both hosts appear in the
 controller log with their MAC, port and switch details.
-**Result:** Host database updates correctly with each new packet_in event.
+**Result:** Host database updates correctly with each new packet_in event and forwarding improves after flow installation.
 
 ---
 
@@ -137,7 +138,7 @@ controller log with their MAC, port and switch details.
   host DB (confirms MAC deduplication logic works correctly)
 - Restarted controller and re-ran topology — all hosts rediscovered correctly
 - Verified host count increments correctly: 1 → 2 → 3 → 4
-- Confirmed 0% packet loss across all test runs
+- Confirmed 0% packet loss across all test runs and Confirmed flow rules are installed dynamically
 
 ---
 
