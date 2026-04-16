@@ -167,7 +167,7 @@ controller log with their MAC, port and switch details.
 
 ### Flow Table (ovs-ofctl dump-flows s1)
 Empty flow table because POX is just flooding, not installing flow rules
-![FlowTable](Screenshot%2026-04-16%at%10.48.40%AM)
+![FlowTable](Screenshot%202026-04-16%20at%2010.48.40%20AM.png)
 
 ---
 
