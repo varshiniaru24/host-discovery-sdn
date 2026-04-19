@@ -51,21 +51,28 @@ class HostDiscovery(EventMixin):
         in_port = event.port
 
         # --------------------------------------------------
-        # 1. HOST DISCOVERY (NEW HOST DETECTION)
+        # 1. EXTRACT IP FROM PACKET (IPv4 or ARP)
+        # --------------------------------------------------
+        # IP extraction is done before host check so that
+        # even on first packet, we capture the IP if available.
+        # ARP packets arrive before IPv4, so IP may initially
+        # be Unknown and gets updated on the next packet.
+        ip  = packet.find('ipv4')
+        arp = packet.find('arp')
+        src_ip = "Unknown"
+
+        if ip:
+            # Extract source IP from IPv4 packet
+            src_ip = str(ip.srcip)
+        elif arp:
+            # Extract source IP from ARP packet
+            src_ip = str(arp.protosrc)
+
+        # --------------------------------------------------
+        # 2. HOST DISCOVERY (NEW HOST DETECTION)
         # --------------------------------------------------
         if src_mac not in self.host_db:
-            src_ip = "Unknown"
-
-            # Extract IP from IPv4 or ARP packet
-            ip  = packet.find('ipv4')
-            arp = packet.find('arp')
-
-            if ip:
-                src_ip = str(ip.srcip)
-            elif arp:
-                src_ip = str(arp.protosrc)
-
-            # Store host details
+            # New host detected — store in database
             self.host_db[src_mac] = {
                 'ip':     src_ip,
                 'switch': dpid,
@@ -73,7 +80,7 @@ class HostDiscovery(EventMixin):
                 'time':   time.strftime('%H:%M:%S')
             }
 
-            # Log discovery
+            # Log discovery details
             log.info("=== NEW HOST DISCOVERED ===")
             log.info("  MAC    : %s", src_mac)
             log.info("  IP     : %s", src_ip)
@@ -83,40 +90,60 @@ class HostDiscovery(EventMixin):
             log.info("  Total hosts: %d", len(self.host_db))
             log.info("===========================")
 
+        elif src_ip != "Unknown" and self.host_db[src_mac]['ip'] == "Unknown":
+            # Host already known but IP was not captured yet.
+            # Update IP once it becomes available (e.g. after ARP resolves).
+            self.host_db[src_mac]['ip'] = src_ip
+            log.info("  IP updated for %s -> %s", src_mac, src_ip)
+
         # --------------------------------------------------
-        # 2. MAC LEARNING (LIKE LEARNING SWITCH)
+        # 3. MAC LEARNING (LIKE LEARNING SWITCH)
         # --------------------------------------------------
         # Learn source MAC → port mapping
+        # This allows future packets to be forwarded directly
+        # without flooding the network
         self.mac_to_port[src_mac] = in_port
 
         # --------------------------------------------------
-        # 3. FORWARDING DECISION (MATCH-ACTION)
+        # 4. FORWARDING DECISION (MATCH-ACTION)
         # --------------------------------------------------
         if dst_mac in self.mac_to_port:
             # Known destination → forward to specific port
             out_port = self.mac_to_port[dst_mac]
         else:
-            # Unknown destination → flood
+            # Unknown destination → flood to all ports
             out_port = of.OFPP_FLOOD
 
         # --------------------------------------------------
-        # 4. INSTALL FLOW RULE (FLOW_MOD)
+        # 5. INSTALL FLOW RULE (FLOW_MOD)
         # --------------------------------------------------
         if out_port != of.OFPP_FLOOD:
-            # Create flow rule
+            # Create flow rule only for known destinations
             flow_mod = of.ofp_flow_mod()
-            flow_mod.match.dl_dst = packet.dst   # Match destination MAC
+
+            # Match on destination MAC address
+            flow_mod.match.dl_dst = packet.dst
+
+            # Action: output to the learned port
             flow_mod.actions.append(of.ofp_action_output(port=out_port))
 
-            # Optional: idle timeout (removes rule after inactivity)
+            # idle_timeout: remove rule after 30s of inactivity
             flow_mod.idle_timeout = 30
 
-            # Send rule to switch
+            # hard_timeout: remove rule after 60s regardless of activity
+            flow_mod.hard_timeout = 60
+
+            # priority: higher value = higher precedence over default rules
+            flow_mod.priority = 10
+
+            # Send flow rule to switch
             event.connection.send(flow_mod)
 
         # --------------------------------------------------
-        # 5. SEND CURRENT PACKET (PACKET_OUT)
+        # 6. SEND CURRENT PACKET (PACKET_OUT)
         # --------------------------------------------------
+        # Forward the current packet immediately while flow rule
+        # is being installed, so no packet is dropped
         msg = of.ofp_packet_out()
         msg.data = event.ofp
         msg.actions.append(of.ofp_action_output(port=out_port))
@@ -126,6 +153,8 @@ class HostDiscovery(EventMixin):
 
 def launch():
     """
-    Entry point for POX controller
+    Entry point for POX controller.
+    Called by POX when module is loaded via:
+    python3 pox.py host_discovery
     """
     core.registerNew(HostDiscovery)
