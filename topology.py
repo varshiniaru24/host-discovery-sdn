@@ -14,36 +14,34 @@ from mininet.log import setLogLevel
 from mininet.cli import CLI
 
 class CustomTopo(Topo):
-
     def build(self):
         """
         Build star topology:
         1 switch connected to 4 hosts
         """
-
         # Add switch
         s1 = self.addSwitch('s1')
 
-        # Add hosts with IP addresses
+        # Add hosts with static IP addresses in the same subnet
         h1 = self.addHost('h1', ip='10.0.0.1/24')
         h2 = self.addHost('h2', ip='10.0.0.2/24')
         h3 = self.addHost('h3', ip='10.0.0.3/24')
         h4 = self.addHost('h4', ip='10.0.0.4/24')
 
-        # Connect hosts to switch
+        # Connect each host to the switch (star topology)
         self.addLink(h1, s1)
         self.addLink(h2, s1)
         self.addLink(h3, s1)
         self.addLink(h4, s1)
 
-
 def run():
     """
-    Start Mininet network with remote POX controller
+    Start Mininet network with remote POX controller.
+    POX must be running on 127.0.0.1 port 6633 before this is called.
     """
-
     topo = CustomTopo()
 
+    # Use remote POX controller
     net = Mininet(
         topo=topo,
         controller=RemoteController('c0', ip='127.0.0.1', port=6633),
@@ -51,14 +49,14 @@ def run():
     )
 
     net.start()
-
     print("=== Network Started ===")
     print("Run commands like: pingall, iperf, etc.")
 
+    # Launch interactive Mininet CLI
     CLI(net)
 
+    # Clean up after CLI exits
     net.stop()
-
 
 if __name__ == '__main__':
     setLogLevel('info')
